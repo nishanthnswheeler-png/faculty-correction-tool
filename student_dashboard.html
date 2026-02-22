@@ -1,0 +1,8 @@
+<h2>Student Dashboard</h2>
+
+{% for test in tests %}
+    <p>
+        {{ test.title }}
+        <a href="/attempt/{{ test.id }}">Attempt</a>
+    </p>
+{% endfor %}
