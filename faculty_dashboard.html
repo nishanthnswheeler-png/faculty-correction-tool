@@ -1,0 +1,27 @@
+<h2>Faculty Dashboard</h2>
+
+<h3>Create Test</h3>
+<form method="POST">
+    Test Title:<br>
+    <input type="text" name="title" required><br><br>
+
+    Questions (one per line):<br>
+    <textarea name="questions" rows="5" cols="40" required></textarea><br><br>
+
+    Answers (one per line):<br>
+    <textarea name="answers" rows="5" cols="40" required></textarea><br><br>
+
+    <button type="submit">Create Test</button>
+</form>
+
+<hr>
+
+<h3>Student Results</h3>
+{% for result in results %}
+    <p>
+        Student: {{ result.student_name }} |
+        HTNo: {{ result.htno }} |
+        Test: {{ result.test_title }} |
+        Score: {{ result.score }}
+    </p>
+{% endfor %}
