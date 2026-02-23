@@ -9,6 +9,7 @@ app.secret_key = "supersecretkey"
 # ==========================
 # DATABASE CONFIG
 # ==========================
+
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
@@ -40,6 +41,13 @@ class Result(db.Model):
     htno = db.Column(db.String(100))
     test_title = db.Column(db.String(200))
     score = db.Column(db.Float)
+
+# ==========================
+# CREATE TABLES (IMPORTANT)
+# ==========================
+
+with app.app_context():
+    db.create_all()
 
 # ==========================
 # HOME
@@ -147,18 +155,23 @@ def faculty_dashboard():
         questions = request.form["questions"]
         answers = request.form["answers"]
 
-        new_test = Test(title=title,
-                        questions=questions,
-                        answers=answers)
+        new_test = Test(
+            title=title,
+            questions=questions,
+            answers=answers
+        )
+
         db.session.add(new_test)
         db.session.commit()
 
     tests = Test.query.all()
     results = Result.query.all()
 
-    return render_template("faculty_dashboard.html",
-                           tests=tests,
-                           results=results)
+    return render_template(
+        "faculty_dashboard.html",
+        tests=tests,
+        results=results
+    )
 
 # ==========================
 # STUDENT DASHBOARD
@@ -170,8 +183,11 @@ def student_dashboard():
         return redirect(url_for("student_login"))
 
     tests = Test.query.all()
-    return render_template("student_dashboard.html",
-                           tests=tests)
+
+    return render_template(
+        "student_dashboard.html",
+        tests=tests
+    )
 
 # ==========================
 # ATTEMPT TEST
@@ -179,6 +195,9 @@ def student_dashboard():
 
 @app.route("/attempt/<int:test_id>", methods=["GET", "POST"])
 def attempt(test_id):
+    if "student" not in session:
+        return redirect(url_for("student_login"))
+
     test = Test.query.get(test_id)
 
     if request.method == "POST":
@@ -188,16 +207,25 @@ def attempt(test_id):
         score = 0
 
         for i in range(len(correct_answers)):
-            similarity = SequenceMatcher(
-                None,
-                student_answers[i].lower(),
-                correct_answers[i]
-            ).ratio()
+            student_ans = student_answers[i].lower()
+            keywords = correct_answers[i].split(",")
 
-            if similarity >= 0.9:
-                score += 1
-            elif similarity >= 0.5:
-                score += 0.5
+            awarded = 0
+
+            for keyword in keywords:
+                keyword = keyword.strip()
+
+                # Full mark
+                if keyword in student_ans:
+                    awarded = 1
+                    break
+
+                # Half mark (similar meaning)
+                similarity = SequenceMatcher(None, student_ans, keyword).ratio()
+                if similarity >= 0.5:
+                    awarded = 0.5
+
+            score += awarded
 
         result = Result(
             student_name=session["student"],
@@ -212,19 +240,15 @@ def attempt(test_id):
         return redirect(url_for("student_dashboard"))
 
     questions = test.questions.split("\n")
-    return render_template("attempt.html",
-                           test=test,
-                           questions=questions)
+
+    return render_template(
+        "attempt.html",
+        test=test,
+        questions=questions
+    )
 
 # ==========================
-# CREATE TABLES (IMPORTANT)
-# ==========================
-
-with app.app_context():
-    db.create_all()
-
-# ==========================
-# RUN
+# RUN APP
 # ==========================
 
 if __name__ == "__main__":

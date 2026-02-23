@@ -1,10 +1,21 @@
-<h2>{{ test.title }}</h2>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Attempt Test</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>{{ test.title }}</h1>
 
-<form method="POST">
-    {% for question in questions %}
-        <p>{{ question }}</p>
-        <input type="text" name="answers" required><br><br>
-    {% endfor %}
+    <form method="POST">
+        {% for question in questions %}
+            <p><b>Q{{ loop.index }}:</b> {{ question }}</p>
+            <textarea name="answers" rows="3" required></textarea>
+        {% endfor %}
 
-    <button type="submit">Submit Test</button>
-</form>
+        <button type="submit">Submit Test</button>
+    </form>
+</div>
+</body>
+</html>

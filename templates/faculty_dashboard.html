@@ -1,27 +1,55 @@
-<h2>Faculty Dashboard</h2>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Faculty Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>Faculty Dashboard</h1>
 
-<h3>Create Test</h3>
-<form method="POST">
-    Test Title:<br>
-    <input type="text" name="title" required><br><br>
+    <h2>Create Test</h2>
+    <form method="POST">
+        <label>Test Title</label>
+        <input type="text" name="title" required>
 
-    Questions (one per line):<br>
-    <textarea name="questions" rows="5" cols="40" required></textarea><br><br>
+        <label>Questions (One per line)</label>
+        <textarea name="questions" rows="5" required></textarea>
 
-    Answers (one per line):<br>
-    <textarea name="answers" rows="5" cols="40" required></textarea><br><br>
+        <label>Keywords (One line per question, comma separated)</label>
+        <textarea name="keywords" rows="5" required></textarea>
 
-    <button type="submit">Create Test</button>
-</form>
+        <button type="submit">Create Test</button>
+    </form>
 
-<hr>
+    <hr>
 
-<h3>Student Results</h3>
-{% for result in results %}
-    <p>
-        Student: {{ result.student_name }} |
-        HTNo: {{ result.htno }} |
-        Test: {{ result.test_title }} |
-        Score: {{ result.score }}
-    </p>
-{% endfor %}
+    <h2>All Tests</h2>
+    <ul>
+        {% for test in tests %}
+            <li>{{ test.title }}</li>
+        {% endfor %}
+    </ul>
+
+    <hr>
+
+    <h2>Student Results</h2>
+    <table border="1" width="100%">
+        <tr>
+            <th>Name</th>
+            <th>Hall Ticket</th>
+            <th>Test</th>
+            <th>Score</th>
+        </tr>
+        {% for result in results %}
+        <tr>
+            <td>{{ result.student_name }}</td>
+            <td>{{ result.htno }}</td>
+            <td>{{ result.test_title }}</td>
+            <td>{{ result.score }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+</body>
+</html>

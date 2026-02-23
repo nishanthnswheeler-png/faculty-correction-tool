@@ -1,8 +1,24 @@
-<h2>Student Dashboard</h2>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>Student Dashboard</h1>
 
-{% for test in tests %}
-    <p>
-        {{ test.title }}
-        <a href="/attempt/{{ test.id }}">Attempt</a>
-    </p>
-{% endfor %}
+    <h2>Available Tests</h2>
+    <ul>
+        {% for test in tests %}
+            <li>
+                {{ test.title }}
+                <a href="/attempt/{{ test.id }}">
+                    <button>Attempt</button>
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+</body>
+</html>
