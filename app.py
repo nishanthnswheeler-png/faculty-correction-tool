@@ -1,15 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
-from difflib import SequenceMatcher
 import os
+import requests
+import csv
+from io import StringIO
 
-app = Flask(__name__)
+app = Flask(_name_)
 app.secret_key = "supersecretkey"
 
 # ==========================
 # DATABASE CONFIG
 # ==========================
-
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
@@ -32,8 +33,9 @@ class Faculty(db.Model):
 class Test(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200))
-    questions = db.Column(db.Text)
-    answers = db.Column(db.Text)
+    google_csv_link = db.Column(db.Text)  # Google form CSV
+    keywords = db.Column(db.Text)         # one per line
+    marks = db.Column(db.Text)            # one per line
 
 class Result(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -43,16 +45,14 @@ class Result(db.Model):
     score = db.Column(db.Float)
 
 # ==========================
-# CREATE TABLES (IMPORTANT)
+# AUTO CREATE TABLES
 # ==========================
-
 with app.app_context():
     db.create_all()
 
 # ==========================
 # HOME
 # ==========================
-
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -60,22 +60,18 @@ def home():
 # ==========================
 # STUDENT REGISTER
 # ==========================
-
 @app.route("/student_register", methods=["GET", "POST"])
 def student_register():
     if request.method == "POST":
         htno = request.form["htno"].lower()
-        name = request.form["name"].lower()
+        name = request.form["name"]
         password = request.form["password"]
 
-        existing = Student.query.filter_by(htno=htno).first()
-        if existing:
-            return "Student already registered! Please login."
+        if Student.query.filter_by(htno=htno).first():
+            return "Student already exists"
 
-        new_student = Student(htno=htno, name=name, password=password)
-        db.session.add(new_student)
+        db.session.add(Student(htno=htno, name=name, password=password))
         db.session.commit()
-
         return redirect(url_for("student_login"))
 
     return render_template("student_register.html")
@@ -83,21 +79,17 @@ def student_register():
 # ==========================
 # FACULTY REGISTER
 # ==========================
-
 @app.route("/faculty_register", methods=["GET", "POST"])
 def faculty_register():
     if request.method == "POST":
         username = request.form["username"].lower()
         password = request.form["password"]
 
-        existing = Faculty.query.filter_by(username=username).first()
-        if existing:
-            return "Faculty already registered! Please login."
+        if Faculty.query.filter_by(username=username).first():
+            return "Faculty already exists"
 
-        new_faculty = Faculty(username=username, password=password)
-        db.session.add(new_faculty)
+        db.session.add(Faculty(username=username, password=password))
         db.session.commit()
-
         return redirect(url_for("faculty_login"))
 
     return render_template("faculty_register.html")
@@ -105,7 +97,6 @@ def faculty_register():
 # ==========================
 # STUDENT LOGIN
 # ==========================
-
 @app.route("/student_login", methods=["GET", "POST"])
 def student_login():
     if request.method == "POST":
@@ -117,15 +108,13 @@ def student_login():
             session["student"] = student.name
             session["htno"] = student.htno
             return redirect(url_for("student_dashboard"))
-        else:
-            return "Invalid Credentials"
+        return "Invalid credentials"
 
     return render_template("student_login.html")
 
 # ==========================
 # FACULTY LOGIN
 # ==========================
-
 @app.route("/faculty_login", methods=["GET", "POST"])
 def faculty_login():
     if request.method == "POST":
@@ -136,15 +125,72 @@ def faculty_login():
         if faculty:
             session["faculty"] = faculty.username
             return redirect(url_for("faculty_dashboard"))
-        else:
-            return "Invalid Credentials"
+        return "Invalid credentials"
 
     return render_template("faculty_login.html")
 
 # ==========================
+# GOOGLE FORM SCORING ENGINE
+# ==========================
+def score_google_form(test):
+    try:
+        response = requests.get(test.google_csv_link)
+        csv_data = response.text
+        reader = csv.reader(StringIO(csv_data))
+        rows = list(reader)
+
+        if len(rows) <= 1:
+            return
+
+        headers = rows[0]
+
+        keywords = test.keywords.strip().split("\n")
+        marks = list(map(float, test.marks.strip().split("\n")))
+
+        for row in rows[1:]:
+
+            htno = row[-1].lower()  # last column is HTNO
+            student = Student.query.filter_by(htno=htno).first()
+            if not student:
+                continue
+
+            answers = row[3:-1]  # skip Timestamp, Email, Score, take Q columns
+
+            total_score = 0
+
+            for i in range(len(keywords)):
+                if i >= len(answers):
+                    continue
+
+                keyword = keywords[i].lower()
+                student_answer = answers[i].lower()
+
+                if keyword in student_answer:
+                    total_score += marks[i]
+
+            existing = Result.query.filter_by(
+                htno=htno,
+                test_title=test.title
+            ).first()
+
+            if existing:
+                existing.score = total_score
+            else:
+                db.session.add(Result(
+                    student_name=student.name,
+                    htno=htno,
+                    test_title=test.title,
+                    score=total_score
+                ))
+
+        db.session.commit()
+
+    except Exception as e:
+        print("Google scoring error:", e)
+
+# ==========================
 # FACULTY DASHBOARD
 # ==========================
-
 @app.route("/faculty_dashboard", methods=["GET", "POST"])
 def faculty_dashboard():
     if "faculty" not in session:
@@ -152,105 +198,45 @@ def faculty_dashboard():
 
     if request.method == "POST":
         title = request.form["title"]
-        questions = request.form["questions"]
-        answers = request.form["answers"]
+        csv_link = request.form["google_link"]
+        keywords = request.form["keywords"]
+        marks = request.form["marks"]
 
-        new_test = Test(
+        db.session.add(Test(
             title=title,
-            questions=questions,
-            answers=answers
-        )
-
-        db.session.add(new_test)
+            google_csv_link=csv_link,
+            keywords=keywords,
+            marks=marks
+        ))
         db.session.commit()
 
     tests = Test.query.all()
+
+    # AUTO SCORE ON DASHBOARD LOAD
+    for test in tests:
+        if test.google_csv_link:
+            score_google_form(test)
+
     results = Result.query.all()
 
-    return render_template(
-        "faculty_dashboard.html",
-        tests=tests,
-        results=results
-    )
+    return render_template("faculty_dashboard.html",
+                           tests=tests,
+                           results=results)
 
 # ==========================
 # STUDENT DASHBOARD
 # ==========================
-
 @app.route("/student_dashboard")
 def student_dashboard():
     if "student" not in session:
         return redirect(url_for("student_login"))
 
     tests = Test.query.all()
-
-    return render_template(
-        "student_dashboard.html",
-        tests=tests
-    )
+    return render_template("student_dashboard.html", tests=tests)
 
 # ==========================
-# ATTEMPT TEST
+# RUN (Railway Compatible)
 # ==========================
-
-@app.route("/attempt/<int:test_id>", methods=["GET", "POST"])
-def attempt(test_id):
-    if "student" not in session:
-        return redirect(url_for("student_login"))
-
-    test = Test.query.get(test_id)
-
-    if request.method == "POST":
-        student_answers = request.form.getlist("answers")
-        correct_answers = test.answers.lower().split("\n")
-
-        score = 0
-
-        for i in range(len(correct_answers)):
-            student_ans = student_answers[i].lower()
-            keywords = correct_answers[i].split(",")
-
-            awarded = 0
-
-            for keyword in keywords:
-                keyword = keyword.strip()
-
-                # Full mark
-                if keyword in student_ans:
-                    awarded = 1
-                    break
-
-                # Half mark (similar meaning)
-                similarity = SequenceMatcher(None, student_ans, keyword).ratio()
-                if similarity >= 0.5:
-                    awarded = 0.5
-
-            score += awarded
-
-        result = Result(
-            student_name=session["student"],
-            htno=session["htno"],
-            test_title=test.title,
-            score=score
-        )
-
-        db.session.add(result)
-        db.session.commit()
-
-        return redirect(url_for("student_dashboard"))
-
-    questions = test.questions.split("\n")
-
-    return render_template(
-        "attempt.html",
-        test=test,
-        questions=questions
-    )
-
-# ==========================
-# RUN APP
-# ==========================
-
-if __name__ == "__main__":
+if _name_ == "_main_":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
