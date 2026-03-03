@@ -2,45 +2,137 @@
 <html>
 <head>
     <title>Faculty Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #2f4f8f;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 85%;
+            margin: 40px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        h1, h2 {
+            text-align: center;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #2f4f8f;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #1f3565;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+
+        hr {
+            margin: 30px 0;
+        }
+    </style>
 </head>
 <body>
+
 <div class="container">
+
     <h1>Faculty Dashboard</h1>
 
-    <h2>Create Test</h2>
+    <!-- ================= CREATE TEST ================= -->
+    <h2>Create Test (Google Form Based)</h2>
+
     <form method="POST">
+
         <label>Test Title</label>
         <input type="text" name="title" required>
 
-        <label>Questions (One per line)</label>
-        <textarea name="questions" rows="5" required></textarea>
+        <label>Google Form CSV Link</label>
+        <input type="text" name="google_link"
+               placeholder="Paste published CSV link here"
+               required>
 
-        <label>Keywords (One line per question, comma separated)</label>
-        <textarea name="keywords" rows="5" required></textarea>
+        <label>Keywords (One per line)</label>
+        <textarea name="keywords" rows="5"
+                  placeholder="waterfall&#10;srs&#10;agile"
+                  required></textarea>
+
+        <label>Marks (One per line)</label>
+        <textarea name="marks" rows="5"
+                  placeholder="5&#10;5&#10;5"
+                  required></textarea>
 
         <button type="submit">Create Test</button>
+
     </form>
 
     <hr>
 
+    <!-- ================= ALL TESTS ================= -->
     <h2>All Tests</h2>
-    <ul>
+
+    <table>
+        <tr>
+            <th>Test Title</th>
+            <th>Google Form Link</th>
+        </tr>
+
         {% for test in tests %}
-            <li>{{ test.title }}</li>
+        <tr>
+            <td>{{ test.title }}</td>
+            <td>
+                <a href="{{ test.google_csv_link }}" target="_blank">
+                    View CSV
+                </a>
+            </td>
+        </tr>
         {% endfor %}
-    </ul>
+    </table>
 
     <hr>
 
+    <!-- ================= RESULTS ================= -->
     <h2>Student Results</h2>
-    <table border="1" width="100%">
+
+    <table>
         <tr>
             <th>Name</th>
             <th>Hall Ticket</th>
             <th>Test</th>
             <th>Score</th>
         </tr>
+
         {% for result in results %}
         <tr>
             <td>{{ result.student_name }}</td>
@@ -50,6 +142,8 @@
         </tr>
         {% endfor %}
     </table>
+
 </div>
+
 </body>
 </html>
