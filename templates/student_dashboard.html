@@ -1,8 +1,23 @@
-<h2>Available Tests</h2>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Available Tests</h2>
 
-{% for test in tests %}
-    <p>
-        <b>{{ test.title }}</b>
-        <a href="{{ test.google_form_link }}" target="_blank">Attempt Test</a>
-    </p>
-{% endfor %}
+        {% for test in tests %}
+            <p>
+                <b>{{ test.title }}</b>
+                <a href="{{ url_for('attempt_test', test_id=test.id) }}">
+                    <button>Attempt Test</button>
+                </a>
+            </p>
+        {% else %}
+            <p>No tests available</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

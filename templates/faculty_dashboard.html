@@ -1,38 +1,95 @@
-<h2>Add Google Form Test</h2>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Faculty Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        function showSection() {
+            const type = document.querySelector('input[name="test_type"]:checked')?.value;
+            document.getElementById("manual_section").style.display = (type === "manual") ? "block" : "none";
+            document.getElementById("google_section").style.display = (type === "google") ? "block" : "none";
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h2>Faculty Dashboard</h2>
 
-<form method="POST">
-    <input type="text" name="title" placeholder="Test Title" required><br><br>
-    <input type="text" name="form_link" placeholder="Google Form Link" required><br><br>
-    <input type="text" name="csv_link" placeholder="Google Sheet CSV Link" required><br><br>
-    <button type="submit">Create Test</button>
-</form>
+        <h3>Create Test</h3>
 
-<hr>
+        <form method="POST">
+            <label>
+                <input type="radio" name="test_type" value="manual" onclick="showSection()" required>
+                Manual Test
+            </label>
+            <label>
+                <input type="radio" name="test_type" value="google" onclick="showSection()" required>
+                Google Form Test
+            </label>
 
-<h2>Available Tests</h2>
-{% for test in tests %}
-    <p>
-        <b>{{ test.title }}</b>
-        <a href="{{ test.google_form_link }}" target="_blank">Open Test</a>
-    </p>
-{% endfor %}
+            <div id="manual_section" style="display:none; margin-top:20px;">
+                <label>Test Title</label>
+                <input type="text" name="manual_title"><br><br>
 
-<hr>
+                <label>Questions (one per line)</label>
+                <textarea name="manual_questions" rows="6"></textarea><br><br>
 
-<h2>Results</h2>
-<table border="1">
-<tr>
-    <th>Student</th>
-    <th>HTNO</th>
-    <th>Test</th>
-    <th>Score</th>
-</tr>
-{% for r in results %}
-<tr>
-    <td>{{ r.student_name }}</td>
-    <td>{{ r.htno }}</td>
-    <td>{{ r.test_title }}</td>
-    <td>{{ r.score }}</td>
-</tr>
-{% endfor %}
-</table>
+                <label>Keywords (one per line)</label>
+                <textarea name="manual_keywords" rows="6"></textarea><br><br>
+
+                <label>Marks (one per line)</label>
+                <textarea name="manual_marks" rows="6"></textarea><br><br>
+            </div>
+
+            <div id="google_section" style="display:none; margin-top:20px;">
+                <label>Test Title</label>
+                <input type="text" name="google_title"><br><br>
+
+                <label>Google Form Link</label>
+                <input type="text" name="google_form_link"><br><br>
+
+                <label>Google Sheet CSV Link</label>
+                <input type="text" name="google_csv_link"><br><br>
+            </div>
+
+            <button type="submit">Create Test</button>
+        </form>
+
+        <hr>
+
+        <h3>All Tests</h3>
+        {% for test in tests %}
+            <p>
+                <b>{{ test.title }}</b> - {{ test.test_type|capitalize }}
+            </p>
+        {% else %}
+            <p>No tests created yet</p>
+        {% endfor %}
+
+        <hr>
+
+        <h3>Student Results</h3>
+        <table border="1" width="100%">
+            <tr>
+                <th>Name</th>
+                <th>Hall Ticket</th>
+                <th>Test</th>
+                <th>Score</th>
+            </tr>
+
+            {% for result in results %}
+            <tr>
+                <td>{{ result.student_name }}</td>
+                <td>{{ result.htno }}</td>
+                <td>{{ result.test_title }}</td>
+                <td>{{ result.score }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4">No results yet</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</body>
+</html>
