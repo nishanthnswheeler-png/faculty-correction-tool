@@ -1,149 +1,38 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Faculty Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #2f4f8f;
-            margin: 0;
-            padding: 0;
-        }
+<h2>Add Google Form Test</h2>
 
-        .container {
-            width: 85%;
-            margin: 40px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-        }
+<form method="POST">
+    <input type="text" name="title" placeholder="Test Title" required><br><br>
+    <input type="text" name="form_link" placeholder="Google Form Link" required><br><br>
+    <input type="text" name="csv_link" placeholder="Google Sheet CSV Link" required><br><br>
+    <button type="submit">Create Test</button>
+</form>
 
-        h1, h2 {
-            text-align: center;
-        }
+<hr>
 
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
+<h2>Available Tests</h2>
+{% for test in tests %}
+    <p>
+        <b>{{ test.title }}</b>
+        <a href="{{ test.google_form_link }}" target="_blank">Open Test</a>
+    </p>
+{% endfor %}
 
-        button {
-            background-color: #2f4f8f;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
+<hr>
 
-        button:hover {
-            background-color: #1f3565;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        table, th, td {
-            border: 1px solid #ccc;
-        }
-
-        th, td {
-            padding: 10px;
-            text-align: center;
-        }
-
-        hr {
-            margin: 30px 0;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-
-    <h1>Faculty Dashboard</h1>
-
-    <!-- ================= CREATE TEST ================= -->
-    <h2>Create Test (Google Form Based)</h2>
-
-    <form method="POST">
-
-        <label>Test Title</label>
-        <input type="text" name="title" required>
-
-        <label>Google Form CSV Link</label>
-        <input type="text" name="google_link"
-               placeholder="Paste published CSV link here"
-               required>
-
-        <label>Keywords (One per line)</label>
-        <textarea name="keywords" rows="5"
-                  placeholder="waterfall&#10;srs&#10;agile"
-                  required></textarea>
-
-        <label>Marks (One per line)</label>
-        <textarea name="marks" rows="5"
-                  placeholder="5&#10;5&#10;5"
-                  required></textarea>
-
-        <button type="submit">Create Test</button>
-
-    </form>
-
-    <hr>
-
-    <!-- ================= ALL TESTS ================= -->
-    <h2>All Tests</h2>
-
-    <table>
-        <tr>
-            <th>Test Title</th>
-            <th>Google Form Link</th>
-        </tr>
-
-        {% for test in tests %}
-        <tr>
-            <td>{{ test.title }}</td>
-            <td>
-                <a href="{{ test.google_csv_link }}" target="_blank">
-                    View CSV
-                </a>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-
-    <hr>
-
-    <!-- ================= RESULTS ================= -->
-    <h2>Student Results</h2>
-
-    <table>
-        <tr>
-            <th>Name</th>
-            <th>Hall Ticket</th>
-            <th>Test</th>
-            <th>Score</th>
-        </tr>
-
-        {% for result in results %}
-        <tr>
-            <td>{{ result.student_name }}</td>
-            <td>{{ result.htno }}</td>
-            <td>{{ result.test_title }}</td>
-            <td>{{ result.score }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-
-</div>
-
-</body>
-</html>
+<h2>Results</h2>
+<table border="1">
+<tr>
+    <th>Student</th>
+    <th>HTNO</th>
+    <th>Test</th>
+    <th>Score</th>
+</tr>
+{% for r in results %}
+<tr>
+    <td>{{ r.student_name }}</td>
+    <td>{{ r.htno }}</td>
+    <td>{{ r.test_title }}</td>
+    <td>{{ r.score }}</td>
+</tr>
+{% endfor %}
+</table>
