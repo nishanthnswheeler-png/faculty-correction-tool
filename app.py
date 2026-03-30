@@ -29,7 +29,7 @@ class Faculty(db.Model):
 class Test(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200))
-    test_type = db.Column(db.String(20))  # "manual" or "google"
+    test_type = db.Column(db.String(20))
 
     questions = db.Column(db.Text)
     keywords = db.Column(db.Text)
@@ -56,7 +56,7 @@ def find_column(row_dict, possible_names):
     for key in row_dict.keys():
         key_norm = normalize(key)
         for name in possible_names:
-            if key_norm == normalize(name):
+            if key_norm.startswith(normalize(name)):
                 return key
     return None
 
@@ -75,31 +75,40 @@ def sync_google_form_scores():
             reader = csv.DictReader(StringIO(response.text))
 
             for row in reader:
-                # 🔥 Flexible column detection
+                # 🔍 Find HTNO column
                 htno_col = find_column(row, ["HTNO", "HT NO", "hallticket", "htno"])
-                score_col = find_column(row, ["Score", "score"])
 
-                if not htno_col or not score_col:
-                    print("Column missing:", row.keys())
+                if not htno_col:
+                    print("HTNO column not found")
                     continue
 
                 htno = str(row.get(htno_col, "")).strip().lower()
-                score_raw = str(row.get(score_col, "")).strip()
 
-                if not htno or not score_raw:
+                if not htno:
                     continue
 
-                # Handle score like "5/10"
-                if "/" in score_raw:
-                    score_raw = score_raw.split("/")[0]
+                # 🔥 CORRECT ANSWERS (EDIT IF NEEDED)
+                correct_answers = {
+                    "1. Which SDLC model": "Waterfall Model",
+                    "2. Which document": "SRS",
+                    "3. Which testing": "Unit Testing"
+                }
 
-                try:
-                    score_value = float(score_raw)
-                except:
-                    continue
+                score_value = 0
+
+                for question, correct in correct_answers.items():
+                    col = find_column(row, [question])
+                    if col:
+                        student_answer = str(row.get(col, "")).strip()
+                        if student_answer == correct:
+                            score_value += 1
+
+                print("HTNO:", htno, "Score:", score_value)
 
                 student = Student.query.filter_by(htno=htno).first()
+
                 if not student:
+                    print("Student not found:", htno)
                     continue
 
                 existing = Result.query.filter_by(
@@ -120,14 +129,13 @@ def sync_google_form_scores():
             db.session.commit()
 
         except Exception as e:
-            print(f"Google sync error for test '{test.title}': {e}")
+            print("Google sync error:", e)
 
-# ================= HOME =================
+# ================= ROUTES =================
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# ================= STUDENT REGISTER =================
 @app.route("/student_register", methods=["GET", "POST"])
 def student_register():
     if request.method == "POST":
@@ -144,7 +152,6 @@ def student_register():
 
     return render_template("student_register.html")
 
-# ================= STUDENT LOGIN =================
 @app.route("/student_login", methods=["GET", "POST"])
 def student_login():
     if request.method == "POST":
@@ -161,7 +168,6 @@ def student_login():
 
     return render_template("student_login.html")
 
-# ================= FACULTY REGISTER =================
 @app.route("/faculty_register", methods=["GET", "POST"])
 def faculty_register():
     if request.method == "POST":
@@ -177,7 +183,6 @@ def faculty_register():
 
     return render_template("faculty_register.html")
 
-# ================= FACULTY LOGIN =================
 @app.route("/faculty_login", methods=["GET", "POST"])
 def faculty_login():
     if request.method == "POST":
@@ -193,7 +198,6 @@ def faculty_login():
 
     return render_template("faculty_login.html")
 
-# ================= FACULTY DASHBOARD =================
 @app.route("/faculty_dashboard", methods=["GET", "POST"])
 def faculty_dashboard():
     if "faculty" not in session:
@@ -204,36 +208,31 @@ def faculty_dashboard():
 
         if test_type == "manual":
             db.session.add(Test(
-                title=request.form["manual_title"].strip(),
+                title=request.form["manual_title"],
                 test_type="manual",
-                questions=request.form["manual_questions"].strip(),
-                keywords=request.form["manual_keywords"].strip(),
-                marks=request.form["manual_marks"].strip()
+                questions=request.form["manual_questions"],
+                keywords=request.form["manual_keywords"],
+                marks=request.form["manual_marks"]
             ))
 
         elif test_type == "google":
             db.session.add(Test(
-                title=request.form["google_title"].strip(),
+                title=request.form["google_title"],
                 test_type="google",
-                google_form_link=request.form["google_form_link"].strip(),
-                google_csv_link=request.form["google_csv_link"].strip()
+                google_form_link=request.form["google_form_link"],
+                google_csv_link=request.form["google_csv_link"]
             ))
 
         db.session.commit()
 
-    # 🔥 Sync results from Google Form
+    # 🔥 SYNC GOOGLE FORM DATA
     sync_google_form_scores()
 
     tests = Test.query.all()
     results = Result.query.all()
 
-    return render_template(
-        "faculty_dashboard.html",
-        tests=tests,
-        results=results
-    )
+    return render_template("faculty_dashboard.html", tests=tests, results=results)
 
-# ================= STUDENT DASHBOARD =================
 @app.route("/student_dashboard")
 def student_dashboard():
     if "student" not in session:
@@ -242,7 +241,6 @@ def student_dashboard():
     tests = Test.query.all()
     return render_template("student_dashboard.html", tests=tests)
 
-# ================= ATTEMPT TEST =================
 @app.route("/attempt_test/<int:test_id>")
 def attempt_test(test_id):
     if "student" not in session:
@@ -255,7 +253,6 @@ def attempt_test(test_id):
 
     return redirect(url_for("manual_test", test_id=test.id))
 
-# ================= MANUAL TEST =================
 @app.route("/manual_test/<int:test_id>", methods=["GET", "POST"])
 def manual_test(test_id):
     if "student" not in session:
@@ -263,32 +260,24 @@ def manual_test(test_id):
 
     test = Test.query.get_or_404(test_id)
 
-    questions = [q.strip() for q in test.questions.split("\n") if q.strip()]
-    keywords = [k.strip().lower() for k in test.keywords.split("\n") if k.strip()]
-    marks = [float(m.strip()) for m in test.marks.split("\n") if m.strip()]
+    questions = test.questions.split("\n")
+    keywords = test.keywords.split("\n")
+    marks = [float(m) for m in test.marks.split("\n")]
 
     if request.method == "POST":
         total_score = 0
 
         for i, keyword in enumerate(keywords):
-            answer = request.form.get(f"answer_{i}", "").strip().lower()
-            if keyword in answer:
+            answer = request.form.get(f"answer_{i}", "").lower()
+            if keyword.lower() in answer:
                 total_score += marks[i]
 
-        existing = Result.query.filter_by(
+        db.session.add(Result(
+            student_name=session["student"],
             htno=session["htno"],
-            test_title=test.title
-        ).first()
-
-        if existing:
-            existing.score = total_score
-        else:
-            db.session.add(Result(
-                student_name=session["student"],
-                htno=session["htno"],
-                test_title=test.title,
-                score=total_score
-            ))
+            test_title=test.title,
+            score=total_score
+        ))
 
         db.session.commit()
         return redirect(url_for("student_dashboard"))
